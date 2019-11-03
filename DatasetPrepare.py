@@ -1,6 +1,39 @@
 import cv2
+import math
+from Loader import wait
 
-def RecordVideo(vname,sqSize, totalFrame):
+sqSize = 50
+
+def showAndget(vd):
+  ret,im = vd.read()
+  if ret:
+    cv2.imshow('Video',im)
+    cv2.waitKey(20)
+    return ret,cv2.resize(im,(50,50))
+  else:
+    return ret,im
+
+def Partpermit():
+  print("Press Y/n to Continue To Next Part of Recording.. ")
+  x = input()
+  if x=='y' or x=='Y':
+    return True
+  else:
+    return False
+
+def bgInit(vd,bs):
+  wait(2)
+  print("Initializing Background ...", end='\r', flush=True)
+  for _ in range(200):
+    _, im = vd.read()
+    im = cv2.resize(im,(50,50))
+    fim = bs.apply(im)
+    cv2.imshow('Background Initialization',cv2.resize(fim,(640,480)))
+    cv2.waitKey(30)
+  cv2.destroyWindow('Background Initialization')
+  print("Background Initialized.                  ")
+
+def RecordVideo(vname, totalFrame):
   vd = cv2.VideoCapture(0)
   _,im = vd.read()
   h,w,_ = im.shape
@@ -58,17 +91,51 @@ def ResizeVideo(output,inputV,shape):
     resizeWriteFrame(vdw, fr, shape)
     ret,fr = vdi.read()
 
-def getImagesfromVideos(inputV, outputf, total, part):
-  vdi = cv2.VideoCapture('Videos/{0}.mp4'.format(inputV))
+def getImagesfromVideos(inputV, outputf, part, total=math.inf):
+  vdi = cv2.VideoCapture(inputV)
   ret,fr = vdi.read()
   i = 0
-  while i<total:
-    print('\n{0}'.format(i), end='\r',flush=True)
+  while ret and i<total:
+    print('Images Collected: {0}'.format(i), end='\r',flush=True)
     i+=1
-    cv2.imwrite('Images/{0}/{1}_{2}.jpg'.format(outputf,part,i),fr)
+    cv2.imwrite('{0}/{1}_{2}.jpg'.format(outputf,part,i), cv2.resize(fr,(50,50)) )
     ret,fr = vdi.read()
+  print("Images Collected from {0} in folder{1}".format(inputV,outputf))
 
-def RecordAndImages(output,total, part):
-  inputV = "{0}{1}".format(output,part)
-  RecordVideo(inputV,50,2000)
-  getImagesfromVideos(inputV,output,total, part)
+def getBackgroundSubsfromVideos(inputV, outputf, part, total=math.inf):
+  backSub = cv2.createBackgroundSubtractorMOG2()
+  vdi = cv2.VideoCapture(inputV)
+  ret,fr = vdi.read()
+  _ = backSub.apply(fr)
+  ret,fr = vdi.read()
+  fr = backSub.apply(fr)
+  i = 0
+  while ret and i<total:
+    print('Images Collected: {0}'.format(i), end='\r',flush=True)
+    i+=1
+    cv2.imwrite('{0}/{1}_{2}.jpg'.format(outputf,part,i), cv2.resize(fr,(50,50)) )
+    ret,fr = vdi.read()
+    fr = backSub.apply(fr)
+  print("Images Collected from {0} in folder{1}".format(inputV,outputf))
+
+def RecordClassImages(outputf, totalFrame, totalParts):
+  vd = cv2.VideoCapture(0)
+  bs = cv2.createBackgroundSubtractorKNN(history=4000)
+
+  print("Recording Background For Initilization of background Substractor...")
+  bgInit(vd,bs)
+  cv2.destroyAllWindows()
+
+  framePerPart = int(totalFrame/totalParts)
+  for part in range(totalParts):
+    print("Recording Part:{0} in 10 seconds..".format(part), end='\r', flush=True)
+    wait(10)
+    for i in range(framePerPart):
+      print("Recording Frame {0}".format(i),end='\r',flush=True)
+      ret,im = showAndget(vd)
+      fim = bs.apply(im)
+      cv2.imwrite('{0}/{1}_{2}.jpg'.format(outputf,part,i), fim)
+    print("Part {0} Recorded.                 ".format(part))
+  
+if __name__ == "__main__":
+  RecordClassImages('Images_RecordBS/Background',1000,2)

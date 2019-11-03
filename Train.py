@@ -1,6 +1,7 @@
 import cv2
 from CNN_Architecture import Net
 from Loader import loading
+from DatasetPrepare import bgInit
 
 import torch
 import torchvision
@@ -10,22 +11,22 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-Train = 
+Train = True
 
 ### ================================================================================================================================
 ### Load Training Dataset
 ### ================================================================================================================================
 
-classes = ('Previous', 'Stop', 'Next', 'Background')
-data_path = 'Images/'
+classes = ('Background', 'Next', 'Previous' , 'Stop')
+data_path = 'Images_RecordBS/'
 PATH = 'gesture_net.pth'
-train_dataset = torchvision.datasets.ImageFolder( root=data_path, transform=torchvision.transforms.ToTensor())
+trainTransform  = transforms.Compose( [transforms.Grayscale(num_output_channels=1), transforms.ToTensor(), transforms.Normalize([0.5], [0.5]) ])
+train_dataset = torchvision.datasets.ImageFolder( root=data_path, transform=trainTransform)
 train_loader = torch.utils.data.DataLoader( train_dataset, batch_size=64, num_workers=0, shuffle=True)
 
-if Train:
-  net = Net()
-  criterion = torch.nn.CrossEntropyLoss()
-  optimizer = torch.optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+net = Net()
+criterion = torch.nn.CrossEntropyLoss()
+optimizer = torch.optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
 ### ================================================================================================================================
 ### Initialize Loss, Optimizer and Neural Network
@@ -33,7 +34,7 @@ if Train:
 ### ================================================================================================================================
 
 if Train:
-  for epoch in range(10):  # loop over the dataset multiple times
+  for epoch in range(8):  # loop over the dataset multiple times
     print("Running epoch: {0}".format(epoch))
     running_loss = 0.0
     for i, data in enumerate(train_loader, 0):
@@ -51,10 +52,8 @@ if Train:
         print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss / 20))
         running_loss = 0.0
 
-  print('Finished Training.')
-  print('Saving The Model...')
+  print('Finished Training. \n Saving The Model...')
   torch.save(net.state_dict(), PATH)
-
 
 ### ================================================================================================================================
 ### Test Neural Network
@@ -65,7 +64,6 @@ def imshow(img):
   npimg = img.numpy()
   plt.imshow(np.transpose(npimg, (1, 2, 0)))
   plt.show()
-
 
 net = Net()
 net.load_state_dict(torch.load(PATH))
@@ -83,15 +81,15 @@ imshow(torchvision.utils.make_grid(images[0:10]))
 ### Determine Accuracy
 ### ================================================================================================================================
 
-ldr = loading("Calculating Accuracy of the Neural Network",4)
+print("Calculating Accuracy of the Neural Network..")
 correct = 0
 total = 0
 with torch.no_grad():
   for data in train_loader:
-    ldr.showLoad()
+    print('Total :{0}, Correct: {1}  '.format(total,correct), end='/r', flush=True)
     images, labels = data
     outputs = net(images)
     _, predicted = torch.max(outputs.data, 1)
     total += labels.size(0)
     correct += (predicted == labels).sum().item()
-print('Accuracy of the network on the 10000 test images: %d %%' % (100 * correct / total))
+print('Accuracy of the network on the 12000 test images: %d %%' % (100 * correct / total))
