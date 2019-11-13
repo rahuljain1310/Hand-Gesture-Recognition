@@ -7,7 +7,7 @@ import torchvision.transforms as transforms
 # trainTransform  = transforms.Compose( [transforms.Grayscale(num_output_channels=1), transforms.ToTensor(), transforms.Normalize([0.5], [0.5]) ])
 # trainTransform  = transforms.Compose( [transforms.ToTensor(), transforms.Normalize([0.5], [0.5]) ])
 trainTransform  = transforms.Compose( [transforms.ToTensor(), transforms.Normalize([0.5,0.5,0.5], [0.5,0.5,0.5]) ])
-classes = ('Previous','Next','Stop' )
+classes = ('Previous','Next','Stop','Background')
 
 class Net(nn.Module):
   def __init__(self):

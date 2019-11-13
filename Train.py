@@ -150,30 +150,30 @@ if Train:
 ### Test Neural Network
 ### ================================================================================================================================
 
-# print("Proceeding to Test Neural Network.\t\t")
+print("Proceeding to Test Neural Network.\t\t")
 
-# net = Net()
-# net.cuda()
-# net.load_state_dict(torch.load(PATH))
+net = Net()
+net.cuda()
+net.load_state_dict(torch.load(PATH))
 
-# dataiter = iter(test_loader)
-# images, labels = dataiter.next()
-# outputs = net(images.cuda())
-# _, predicted = torch.max(outputs, 1)
+dataiter = iter(test_loader)
+images, labels = dataiter.next()
+outputs = net(images.cuda())
+_, predicted = torch.max(outputs, 1)
 
-# imshow(torchvision.utils.make_grid(images[0:40]))
-# total = labels.size(0)
-# correct = (predicted == labels.cuda()).sum().item()
-# print("Total :{0}, Correct: {1}".format(total,correct))
-# print('GroundTruth: ', ' '.join('%5s' % classes[labels[j]] for j in range(40)))
-# print('Predicted: ', ' '.join('%5s' % classes[predicted[j]] for j in range(40)))
+imshow(torchvision.utils.make_grid(images[0:40]))
+total = labels.size(0)
+correct = (predicted == labels.cuda()).sum().item()
+print("Total :{0}, Correct: {1}".format(total,correct))
+print('GroundTruth: ', ' '.join('%5s' % classes[labels[j]] for j in range(40)))
+print('Predicted: ', ' '.join('%5s' % classes[predicted[j]] for j in range(40)))
 
 ### ================================================================================================================================
 ### Determine Accuracy
 ### ================================================================================================================================
 
-# print("Determing Accuracy on DataLoader ... \t\t\n")
-# print("Calculating Accuracy of the Train Neural Network..\t")
-# print('Training Accuracy\t: %d %%' % getAccuracy(train_loader))
-# print("Calculating Accuracy of the Cross ValidationNeural Network..\t")
-# print('Cross Validation Accuracy: %d %%' % getAccuracy(test_loader))
+print("Determing Accuracy on DataLoader ... \t\t\n")
+print("Calculating Accuracy of the Train Neural Network..\t")
+print('Training Accuracy\t: %d %%' % getAccuracy(train_loader))
+print("Calculating Accuracy of the Cross ValidationNeural Network..\t")
+print('Cross Validation Accuracy: %d %%' % getAccuracy(test_loader))
