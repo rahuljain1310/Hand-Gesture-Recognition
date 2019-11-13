@@ -64,24 +64,47 @@ print("Neural Network Fetched.\t\t\t")
 ret,waitk = True, False
 w = torchvision.transforms.ToTensor()
 print("Capturing Frame ...\t\t", end='\r', flush=True)
+bs = cv2.createBackgroundSubtractorMOG2()
+# bgInit(vd,bs)
+sm = torch.nn.Softmax()
 while ret and not waitk :
   ret, im = vd.read()
-  bs = cv2.createBackgroundSubtractorMOG2()
-  bgInit(vd,bs)
-  points,frame = skin_detect.track_using_background(bs,frame)
+  points,frame = skin_detect.track_using_background(bs,im)
   outputs = []
   predictions = []
   outclasses = []
+  if len(points)==0:
+    cv2.putText(frame, 'Background', (15,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5 , (0,255,0))
+    continue
+  i_max = -1
+  p_max = -1
+  label_max = -1
+  i = -1
   for p1, p2 in points:
-
-    tensorIm = trainTransform(transformImage(im[p1[1]:p2[1],p1[0]:p2[0]]))
-    output = net(tensorIm.unsqueeze(0))
-    outputs.append(output)
-    _, predicted = torch.max(output, 1)
-    predictions.append(predicted)
-    outClass = classes[predicted]
-    outclasses.append(outClass)
-    cv2.putText(frame, outClass, p1, cv2.FONT_HERSHEY_SIMPLEX, 0.5 , (0,0,0))
-  # displayFrame(im,outClass)
+    i = i+1
+    try:
+      tensorIm = trainTransform(transformImage(im[p1[1]:p2[1],p1[0]:p2[0]]))
+      output = net(tensorIm.unsqueeze(0))
+      outputs.append(output)
+      value, predicted = torch.max(output, 1)
+      if value>1:
+        p_max = value
+        i_max = i
+        label_max = predicted
+        cv2.putText(frame, classes[label_max],tuple(points[i_max][0]), cv2.FONT_HERSHEY_SIMPLEX, 0.5 , (0,0,0))
+        cv2.rectangle(frame, tuple(points[i_max][0]), tuple(points[i_max][1]), (0, 255, 0), 2)
+      # predictions.append(predicted)
+      # outClass = classes[predicted]
+      # outclasses.append(outClass)
+      # cv2.putText(frame, outClass,tuple(p1), cv2.FONT_HERSHEY_SIMPLEX, 0.5 , (0,0,0))
+    except:
+      cv2.putText(frame, 'Background', (15,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5 , (0,255,0))
+      continue
+  if p_max>1.5:
+    pass
+    # cv2.putText(frame, classes[label_max],tuple(points[i_max][0]), cv2.FONT_HERSHEY_SIMPLEX, 0.5 , (0,0,0))
+    # cv2.rectangle(frame, tuple(points[i_max][0]), tuple(points[i_max][1]), (0, 255, 0), 2)
+  else:
+    cv2.putText(frame, 'Background', (15,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5 , (0,255,0))
   cv2.imshow('Detect',frame)
   waitk = cv2.waitKey(30)==27
