@@ -307,7 +307,7 @@ def object_track():
     # Instead of MIL, you can also use
  
     tracker_types = ['BOOSTING', 'MIL','KCF', 'TLD', 'MEDIANFLOW', 'GOTURN', 'MOSSE', 'CSRT']
-    tracker_type = tracker_types[5]
+    tracker_type = tracker_types[1]
  
     if int(minor_ver) < 3:
         tracker = cv2.Tracker_create(tracker_type)
@@ -344,10 +344,10 @@ def object_track():
         sys.exit()
      
     # Define an initial bounding box
-    bbox = (287, 23, 86, 320)
+    bbox = (0,0,500,500)
     
     # Uncomment the line below to select a different bounding box
-    bbox = cv2.selectROI(frame, False)
+    # bbox = cv2.selectROI(frame, False)
     cv2.destroyAllWindows()
     print(bbox)
     # Initialize tracker with first frame and bounding box
@@ -367,6 +367,7 @@ def object_track():
         ret, frame = video.read()
         if k==32:
             key_p = k
+            # break
         
         if ret: 
             #  # hand initialization
@@ -379,12 +380,12 @@ def object_track():
                 # print(im_masked.shape)
                 frame[p1[1]:p2[1],p1[0]:p2[0]] = im_masked
                 cv2.imshow('H',frame)
-                if (np.average(mask.reshape(mask.shape[0]*mask.shape[1])) > 255*0.6):
+                if (np.average(mask.reshape(mask.shape[0]*mask.shape[1])) > 255*0.3):
                     if (frames_required > 0):
                         frames_required -=1
                         if (frames_required == 5):
                             # frame = im_masked
-                            # frame[p1[1]:p2[1],p1[0]:p2[0]] = im_masked
+                            frame[p1[1]:p2[1],p1[0]:p2[0]] = im_masked
                             break
                             # cv2.imshow('masked_box',im_masked)
                         continue
@@ -397,7 +398,7 @@ def object_track():
             cv2.rectangle(frame, p1, p2, (255,0,0), 2, 1)
             # frame = cv2.flip(frame,1)
             cv2.imshow("Initialize Tracking", cv2.flip(frame,1))
-
+            # break
             # k = cv2.waitKey(30)
             
                 # if (key_p==32):
@@ -419,7 +420,7 @@ def object_track():
         ok, bbox = tracker.update(frame)
  
         # Calculate Frames per second (FPS)
-        fps = cv2.getTickFrequency() / (cv2.getTickCount() - timer);
+        fps = cv2.getTickFrequency() / (cv2.getTickCount() - timer)
  
         # Draw bounding box
         if ok:
@@ -444,7 +445,37 @@ def object_track():
         k = cv2.waitKey(30) & 0xff
         if k == 27 : break
 
+def track_using_background():
+    kernel = np.ones((5, 5), np.uint8)
+        vkernel = np.ones((5,1),np.uint8)
+        # img_dilation = cv2.erode(mask, kernel, iterations=3)
+        img_dilation = cv2.dilate(mask, vkernel, iterations=1)
+        img_dilation = cv2.dilate(mask, kernel, iterations=1)
+        # cv2.imshow('dilated', img_dilation)
+        # cv2.imwrite('undillated.png',mask)
+        # cv2.imwrite('dillated.png',img_dilation)
+        cv2MajorVersion = cv2.__version__.split(".")[0]
+        # check for contours on thresh
+        if int(cv2MajorVersion) >= 4:
+            ctrs, hier = cv2.findContours(img_dilation.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        else:
+            im2, ctrs, hier = cv2.findContours(img_dilation.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        sorted_ctrs = sorted(ctrs, key=lambda ctr: cv2.boundingRect(ctr)[0])
+        for i, ctr in enumerate(sorted_ctrs):
+        # Get bounding box
+            x, y, w, h = cv2.boundingRect(ctr)
 
+            # Getting ROI
+            roi = im_masked[y:y + h, x:x + w]
+
+            # show ROI
+            # cv2.imshow('segment no:'+str(i),roi)
+            if w > 50 and h > 50:
+                cv2.rectangle(im, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        cv2.imshow('Hand',im)
+        waitk = cv2.waitKey(30)==27
+        # 
+        ret,im = vd.read()
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description = 'Skin Detector')
