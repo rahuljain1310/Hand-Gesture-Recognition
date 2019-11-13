@@ -3,11 +3,9 @@ import math
 from Loader import wait
 import sys
 
-if not sys.warnoptions:
-    import warnings
-    warnings.simplefilter("ignore")
-
-sqSize = 50
+# if not sys.warnoptions:
+#     import warnings
+#     warnings.simplefilter("ignore")
 
 def showAndget(vd):
   ret,im = vd.read()
@@ -47,8 +45,7 @@ def getRectangle(sqSize,w,h):
 
 def getImageWithBox(vd, sqSize, p1, p2 ,ws, text):
   ret,im = vd.read()
-  x = p1[0]
-  y = p1[1]
+  x,y = p1[0], p1[1]
   if ret:
     img = im[y:y+sqSize,x:x+sqSize]
     cv2.rectangle(im,p1,p2,(0,0,255), thickness=2)

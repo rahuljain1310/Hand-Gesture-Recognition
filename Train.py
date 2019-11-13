@@ -14,19 +14,23 @@ import numpy as np
 Train = True
 
 torch.cuda.set_device(0)
+print(torch.cuda.get_device_name())
 
 ### ================================================================================================================================
 ### Load Training Dataset
 ### ================================================================================================================================
 
+print("Loading Train Dataset")
 classes = ('Background', 'Next', 'Previous' , 'Stop')
 PATH = 'gesture_net.pth'
-# trainTransform  = transforms.Compose( [transforms.Grayscale(num_output_channels=1), transforms.ToTensor(), transforms.Normalize([0.5], [0.5]) ])
-trainTransform  = transforms.Compose( [transforms.ToTensor(), transforms.Normalize([0.5], [0.5]) ])
+trainTransform  = transforms.Compose( [transforms.Grayscale(num_output_channels=1), transforms.ToTensor(), transforms.Normalize([0.5], [0.5]) ])
+# trainTransform  = transforms.Compose( [transforms.ToTensor(), transforms.Normalize([0.5], [0.5]) ])
+# trainTransform  = transforms.Compose( [transforms.ToTensor(), transforms.Normalize([0.5,0.5,0.5], [0.5,0.5,0.5]) ])
 
 train_dataset = torchvision.datasets.ImageFolder( root='Images_RecordBS_Train/', transform=trainTransform)
 train_loader = torch.utils.data.DataLoader( train_dataset, batch_size=64, num_workers=0, shuffle=True)
 
+print("Starting CUDA neural ")
 net = Net()
 net.cuda()
 criterion = torch.nn.CrossEntropyLoss()
@@ -93,7 +97,7 @@ print('Predicted: ', ' '.join('%5s' % classes[predicted[j]] for j in range(10)))
 ### Determine Accuracy
 ### ================================================================================================================================
 
-test_dataset = torchvision.datasets.ImageFolder( root='Images_RecordBS_Test/', transform=trainTransform)
+test_dataset = torchvision.datasets.ImageFolder( root='Images_Demo/', transform=trainTransform)
 test_loader = torch.utils.data.DataLoader( test_dataset, batch_size=64, num_workers=0, shuffle=True)
 
 print("Calculating Accuracy of the Neural Network..\t")
