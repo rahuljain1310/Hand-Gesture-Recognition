@@ -10,7 +10,7 @@ import argparse
 # Cr >= (-4.5652*Cb)+234.5652 and
 # Cr <= (-1.15*Cb)+301.75 and
 # Cr <= (-2.2857*Cb)+432.85
-
+import DatasetPrepare
 
 import cv2
 import matplotlib.pyplot as plt
@@ -18,7 +18,7 @@ import os
 import PIL
 from numba import vectorize,float64,uint8,guvectorize
 
-
+# backSub = cv2.createBackgroundSubtractorMOG2()
 
 # @vectorize([uint8[:,:](uint8[:,:],uint8[:,:],uin8[:,:])])
 # def mask_pixel1(pixel):
@@ -262,10 +262,11 @@ def sliding_window(im,window,scale,scale_factor):
     return outputs
 
 def get_label(outputs):
+    # float scale_factor = 1.3
     for i in range(len(outputs)):
-        kernel = np.ones((5, 5), np.uint8)
-        outputs[i] = cv2.erode(outputs[i], kernel, iterations=1)
-
+        # kernel = np.ones((5, 5), np.uint8)
+        # outputs[i] = cv2.erode(outputs[i], kernel, iterations=1)
+        pass
 from numpy.lib.stride_tricks import as_strided
 
     # cv2.imwrite('hand.jpeg',img_dilation)
@@ -307,7 +308,7 @@ def object_track():
     # Instead of MIL, you can also use
  
     tracker_types = ['BOOSTING', 'MIL','KCF', 'TLD', 'MEDIANFLOW', 'GOTURN', 'MOSSE', 'CSRT']
-    tracker_type = tracker_types[5]
+    tracker_type = tracker_types[1]
  
     if int(minor_ver) < 3:
         tracker = cv2.Tracker_create(tracker_type)
@@ -344,10 +345,10 @@ def object_track():
         sys.exit()
      
     # Define an initial bounding box
-    bbox = (287, 23, 86, 320)
+    bbox = (0,0,500,500)
     
     # Uncomment the line below to select a different bounding box
-    bbox = cv2.selectROI(frame, False)
+    # bbox = cv2.selectROI(frame, False)
     cv2.destroyAllWindows()
     print(bbox)
     # Initialize tracker with first frame and bounding box
@@ -367,6 +368,7 @@ def object_track():
         ret, frame = video.read()
         if k==32:
             key_p = k
+            # break
         
         if ret: 
             #  # hand initialization
@@ -379,12 +381,12 @@ def object_track():
                 # print(im_masked.shape)
                 frame[p1[1]:p2[1],p1[0]:p2[0]] = im_masked
                 cv2.imshow('H',frame)
-                if (np.average(mask.reshape(mask.shape[0]*mask.shape[1])) > 255*0.6):
+                if (np.average(mask.reshape(mask.shape[0]*mask.shape[1])) > 255*0.3):
                     if (frames_required > 0):
                         frames_required -=1
                         if (frames_required == 5):
                             # frame = im_masked
-                            # frame[p1[1]:p2[1],p1[0]:p2[0]] = im_masked
+                            frame[p1[1]:p2[1],p1[0]:p2[0]] = im_masked
                             break
                             # cv2.imshow('masked_box',im_masked)
                         continue
@@ -397,7 +399,7 @@ def object_track():
             cv2.rectangle(frame, p1, p2, (255,0,0), 2, 1)
             # frame = cv2.flip(frame,1)
             cv2.imshow("Initialize Tracking", cv2.flip(frame,1))
-
+            # break
             # k = cv2.waitKey(30)
             
                 # if (key_p==32):
@@ -419,7 +421,7 @@ def object_track():
         ok, bbox = tracker.update(frame)
  
         # Calculate Frames per second (FPS)
-        fps = cv2.getTickFrequency() / (cv2.getTickCount() - timer);
+        fps = cv2.getTickFrequency() / (cv2.getTickCount() - timer)
  
         # Draw bounding box
         if ok:
@@ -444,12 +446,92 @@ def object_track():
         k = cv2.waitKey(30) & 0xff
         if k == 27 : break
 
+def expand(p1,p2,shape,scale):
+    
+    d1 = p2[1]-p1[1]
+    d0 = p2[0] - p1[0]
+    
+    i1  = int(d1*scale) - d1
+    p1[1] -= i1//2
+    p2[1] += i1//2
+    i2 = int(d0*scale) - d0
+    p1[0] -= i2//2
+    p2[0] += i2//2
+    if (p1[0] < 0):
+        p1[0] = 0
+    if (p1[1] < 0):
+        p1[1] = 0
+    if (p2[0] >=shape[1]):
+        p2[0] = shape[1] - 1
+    if (p2[1] >= shape[0]):
+        p2[1] = shape[0] - 1
+    return p1,p2
+def resize(p1,p2):
+    d1 = p2[1]-p1[1]
+    d0 = p2[0] - p1[0]
+    size = max(d1,d0)
+    inc = abs(d1-d0)//2
+    rinc = abs(d1-d0) - inc
+    if (size == d1):
+        p2[0] += inc
+        p1[0] -= rinc
+    else:
+        p2[1] += inc
+        p2[1] -= rinc
+    return p1,p2
+def track_using_background(bs,frame):
+    fr1 = bs.apply(frame)
+    erode_kernel = np.ones((3, 3), np.uint8)
+    dilate_kernel = np.ones((5,5),np.uint8)
+    # img_dilation = cv2.erode(mask, kernel, iterations=3)
+    fr1 = cv2.erode(fr1, erode_kernel, iterations=1)
+    fr1 = cv2.dilate(fr1, dilate_kernel, iterations=3)
+    # cv2.imshow('dilated', img_dilation)
+    # cv2.imwrite('undillated.png',mask)
+    # cv2.imwrite('dillated.png',img_dilation)
+    cv2MajorVersion = cv2.__version__.split(".")[0]
+    # check for contours on thresh
+    if int(cv2MajorVersion) >= 4:
+        ctrs, hier = cv2.findContours(fr1.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    else:
+        im2, ctrs, hier = cv2.findContours(fr1.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    sorted_ctrs = sorted(ctrs, key=lambda ctr: cv2.boundingRect(ctr)[0])
+    points_list = []
+    for i, ctr in enumerate(sorted_ctrs):
+    # Get bounding box
+        x, y, w, h = cv2.boundingRect(ctr)
+        p1 = [x,y]
+        p2 = [x+w,y+h]
 
+        # Getting ROI
+        roi = frame[y:y + h, x:x + w]
+
+        # show ROI
+        # cv2.imshow('segment no:'+str(i),roi)
+        if w > 100 and h > 100:
+            p1,p2 = resize(*expand(p1,p2,frame.shape,1.3))
+            points_list.append((p1,p2))
+            cv2.rectangle(frame, tuple(p1), tuple(p2), (0, 255, 0), 2)
+    return points_list,frame
+    # cv2.imshow('Hand',frame)
+    
+   
+    # 
+    
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description = 'Skin Detector')
     parser.add_argument('f', metavar = 'stop_front.png', type = str, help = 'Input File')
     args = parser.parse_args()
     # im = cv2.imread(args.f)
-    object_track()
+    # object_track()
     # skin_detection_live()
+    vd = cv2.VideoCapture(0)
+    # bs = cv2.createBackgroundSubtractorKNN()
+    bs = cv2.createBackgroundSubtractorMOG2()
+    DatasetPrepare.bgInit(vd,bs)
+    ret,frame = vd.read()
+    while(ret):
+        points,frame = track_using_background(bs,frame)
+        ret,frame = vd.read()
+        cv2.waitKey(30)

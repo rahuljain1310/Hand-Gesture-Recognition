@@ -3,7 +3,7 @@ from CNN_Architecture import Net, trainTransform,classes
 
 from Loader import loading
 from DatasetPrepare import bgInit
-
+import skin_detect
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -42,10 +42,10 @@ def displayFrame(frame, text):
 # bgInit(vd,bs)
 
 def transformImage(im):
-  x,y = p1[0],p1[1]
-  img = im[y:y+boundSquare,x:x+boundSquare]
+  # x,y = p1[0],p1[1]
+  # img = im[y:y+boundSquare,x:x+boundSquare]
   # cv2.imshow('Sample',img)
-  x = cv2.resize(img,(50,50))
+  x = cv2.resize(im,(50,50))
   return x
 
 ### Fetching Neural Network
@@ -66,9 +66,22 @@ w = torchvision.transforms.ToTensor()
 print("Capturing Frame ...\t\t", end='\r', flush=True)
 while ret and not waitk :
   ret, im = vd.read()
-  tensorIm = trainTransform(transformImage(im))
-  output = net(tensorIm.unsqueeze(0))
-  _, predicted = torch.max(output, 1)
-  outClass = classes[predicted]
-  displayFrame(im,outClass)
+  bs = cv2.createBackgroundSubtractorMOG2()
+  bgInit(vd,bs)
+  points,frame = skin_detect.track_using_background(bs,frame)
+  outputs = []
+  predictions = []
+  outclasses = []
+  for p1, p2 in points:
+
+    tensorIm = trainTransform(transformImage(im[p1[1]:p2[1],p1[0]:p2[0]]))
+    output = net(tensorIm.unsqueeze(0))
+    outputs.append(output)
+    _, predicted = torch.max(output, 1)
+    predictions.append(predicted)
+    outClass = classes[predicted]
+    outclasses.append(outClass)
+    cv2.putText(frame, outClass, p1, cv2.FONT_HERSHEY_SIMPLEX, 0.5 , (0,0,0))
+  # displayFrame(im,outClass)
+  cv2.imshow('Detect',frame)
   waitk = cv2.waitKey(30)==27
