@@ -1,5 +1,5 @@
 import cv2
-from CNN_Architecture import Net
+from CNN_Architecture import Net,trainTransform,classes
 from Loader import loading
 from DatasetPrepare import bgInit
 
@@ -11,33 +11,63 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-Train = True
-
 torch.cuda.set_device(0)
+print(torch.cuda.get_device_name())
+
+def getPermission():
+  print("Train Data. [Y/n]. ")
+  t = input()
+  Train = (t=='y' or t=='Y')
+  print("Initialize The Weights [Y/n].")
+  i = input()
+  Initialize = (i=='n' or i=='N')
+  return Train,Initialize
+
+Train,Initialize = getPermission()
 
 ### ================================================================================================================================
 ### Load Training Dataset
 ### ================================================================================================================================
 
-classes = ('Background', 'Next', 'Previous' , 'Stop')
+print("Loading Train Dataset")
+
 PATH = 'gesture_net.pth'
-# trainTransform  = transforms.Compose( [transforms.Grayscale(num_output_channels=1), transforms.ToTensor(), transforms.Normalize([0.5], [0.5]) ])
-trainTransform  = transforms.Compose( [transforms.ToTensor(), transforms.Normalize([0.5], [0.5]) ])
 
-train_dataset = torchvision.datasets.ImageFolder( root='Images_RecordBS_Train/', transform=trainTransform)
+train_dataset = torchvision.datasets.ImageFolder( root='Images_Demo_Train/', transform=trainTransform)
 train_loader = torch.utils.data.DataLoader( train_dataset, batch_size=64, num_workers=0, shuffle=True)
+test_dataset = torchvision.datasets.ImageFolder( root='Images_Demo_Test/', transform=trainTransform)
+test_loader = torch.utils.data.DataLoader( test_dataset, batch_size=64, num_workers=0, shuffle=True)
 
-net = Net()
-net.cuda()
-criterion = torch.nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+if Train:
+  print("Starting CUDA neural ")
+  net = Net()
+  net.cuda()
+  if not Initialize:
+    net.load_state_dict(torch.load(PATH))
+    net.eval()
+  criterion = torch.nn.CrossEntropyLoss()
+  optimizer = torch.optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
 ### ================================================================================================================================
 ### Initialize Loss, Optimizer and Neural Network
 ### Training Neural Network
 ### ================================================================================================================================
 
-epochLoss = []
+def getAccuracy(loader):
+  correct = 0
+  total = 0
+  with torch.no_grad():
+    for data in loader:
+      print('Total :{0}, Correct: {1}  '.format(total,correct), end='\r', flush=True)
+      images, labels = data
+      outputs = net(images.cuda())
+      _, predicted = torch.max(outputs.data, 1)
+      total += labels.size(0)
+      correct += (predicted == labels.cuda()).sum().item()
+  return 100 * correct / total
+
+trainingLossList = []
+crossValidationLossList = []
 if Train:
   print("Training Neural Network.")
   for epoch in range(12):  # loop over the dataset multiple times
@@ -56,12 +86,17 @@ if Train:
       running_loss += loss.item()
       if i % 20 == 19:   
         print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss / 20))
-        epochLoss.append(running_loss)
         running_loss = 0.0
+    trainingLoss = getAccuracy(train_loader)
+    crossValidationLoss = getAccuracy(test_loader)
+    trainingLossList.append(trainingLoss)
+    crossValidationLossList.append(crossValidationLoss)
+    print("Epoch {0}: Training Error: {1}, CrossValidation Error: {2}".format(epoch,trainingLoss,crossValidationLoss))
 
   print('Finished Training. \n Saving The Model...')
-  plt.plot(epochLoss)
-  plt.show
+  plt.plot(trainingLossList)
+  plt.plot(crossValidationLossList)
+  plt.show()
   torch.save(net.state_dict(), PATH)
 
 ### ================================================================================================================================
@@ -69,42 +104,36 @@ if Train:
 ### ================================================================================================================================
 
 print("Proceeding to Test Neural Network.\t\t")
-
 def imshow(img):
   img = img / 2 + 0.5
   npimg = img.numpy()
   plt.imshow(np.transpose(npimg, (1, 2, 0)))
   plt.show()
-
+  
 net = Net()
 net.cuda()
 net.load_state_dict(torch.load(PATH))
 
-dataiter = iter(train_loader)
+dataiter = iter(test_loader)
 images, labels = dataiter.next()
 outputs = net(images.cuda())
 _, predicted = torch.max(outputs, 1)
 
-print('GroundTruth: ', ' '.join('%5s' % classes[labels[j]] for j in range(10)))
-print('Predicted: ', ' '.join('%5s' % classes[predicted[j]] for j in range(10)))
-# imshow(torchvision.utils.make_grid(images[0:10]))
+print('GroundTruth: ', ' '.join('%5s' % classes[labels[j]] for j in range(20)))
+print('Predicted: ', ' '.join('%5s' % classes[predicted[j]] for j in range(20)))
+imshow(torchvision.utils.make_grid(images[0:20]))
+total = labels.size(0)
+correct = (predicted == labels.cuda()).sum().item()
+print("Total :{0}, Correct: {2}".format(total,correct))
 
 ### ================================================================================================================================
 ### Determine Accuracy
 ### ================================================================================================================================
 
-test_dataset = torchvision.datasets.ImageFolder( root='Images_RecordBS_Test/', transform=trainTransform)
-test_loader = torch.utils.data.DataLoader( test_dataset, batch_size=64, num_workers=0, shuffle=True)
+print("Determing Accuracy on DataLoader ... \t\t\n")
 
-print("Calculating Accuracy of the Neural Network..\t")
-correct = 0
-total = 0
-with torch.no_grad():
-  for data in test_loader:
-    print('Total :{0}, Correct: {1}  '.format(total,correct), end='\r', flush=True)
-    images, labels = data
-    outputs = net(images.cuda())
-    _, predicted = torch.max(outputs.data, 1)
-    total += labels.size(0)
-    correct += (predicted == labels.cuda()).sum().item()
-print('Accuracy of the network on the Test images: %d %%' % (100 * correct / total))
+print("Calculating Accuracy of the Train Neural Network..\t")
+print('Training Accuracy\t: %d %%' % getAccuracy(train_loader))
+
+print("Calculating Accuracy of the Cross ValidationNeural Network..\t")
+print('Cross Validation Accuracy: %d %%' % getAccuracy(test_loader))
