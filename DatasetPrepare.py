@@ -167,16 +167,16 @@ def RecordClassImages(outputf, framesPerPart, part):
   vd = cv2.VideoCapture(0)
   _,im = vd.read()
   h,w,_ = im.shape
-  boundSquare = 240
-  sec = 7
+  boundSquare = 480
+  sec = 2
   fs = 5
   p1,p2 = getRectangle(boundSquare,w,h)
-  res = input()
-  if (not res == 'y') and (not res =='Y'):
-    return
+  # res = input()
+  # if (not res == 'y') and (not res =='Y'):
+  #   return
   print("Recording Part:{0} in 10 seconds..".format(part), end='\r', flush=True)
-  for i in range(sec*33):
-    getImageWithBox(vd,360,p1,p2,30,'Wait {0} seconds.'.format(int(sec-i/33)))
+  for i in range(sec*23):
+    getImageWithBox(vd,360,p1,p2,30,'Wait {0} seconds.'.format(int(sec-i/23)))
   for i in range(framesPerPart):
     print("Recording Frame {0}\t\t\t\t".format(i),end='\r',flush=True)
     ret,im = getImageWithBox(vd,boundSquare,p1,p2,1000//fs,"Recording Frame {0}".format(i))
@@ -190,8 +190,8 @@ def RecordClassImages(outputf, framesPerPart, part):
 if __name__ == "__main__":
   part = input()
   frame = 100
-  RecordClassImages('Images_Demo/Stop',frame,part+'_1')
-  RecordClassImages('Images_Demo/Next',frame//2,part+'_1')
+  # RecordClassImages('Images_Demo/Stop',frame,part+'_1')
+  # RecordClassImages('Images_Demo/Next',frame//2,part+'_1')
   RecordClassImages('Images_Demo/Previous',frame//2,part+'_1')
   RecordClassImages('Images_Demo/Stop',frame,part+'_2')
   RecordClassImages('Images_Demo/Next',frame//2,part+'_2')
