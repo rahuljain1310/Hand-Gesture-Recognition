@@ -481,11 +481,12 @@ def resize(p1,p2):
     return p1,p2
 def track_using_background(bs,frame):
     fr1 = bs.apply(frame)
-    erode_kernel = np.ones((3, 3), np.uint8)
+    erode_kernel = np.ones((4, 4), np.uint8)
     dilate_kernel = np.ones((5,5),np.uint8)
     # img_dilation = cv2.erode(mask, kernel, iterations=3)
     fr1 = cv2.erode(fr1, erode_kernel, iterations=1)
-    fr1 = cv2.dilate(fr1, dilate_kernel, iterations=3)
+    fr1 = cv2.dilate(fr1, dilate_kernel, iterations=2)
+    fr1 = cv2.Canny(fr1,50,150)
     # cv2.imshow('dilated', img_dilation)
     # cv2.imwrite('undillated.png',mask)
     # cv2.imwrite('dillated.png',img_dilation)
@@ -512,7 +513,8 @@ def track_using_background(bs,frame):
             p1,p2 = resize(*expand(p1,p2,frame.shape,1.3))
             points_list.append((p1,p2))
             cv2.rectangle(frame, tuple(p1), tuple(p2), (0, 255, 0), 2)
-    return points_list,frame
+            cv2.rectangle(fr1, tuple(p1), tuple(p2), (0, 255, 0), 2)
+    return points_list,frame,fr1
     # cv2.imshow('Hand',frame)
     
    
@@ -520,9 +522,9 @@ def track_using_background(bs,frame):
     
 
 if __name__=='__main__':
-    parser = argparse.ArgumentParser(description = 'Skin Detector')
-    parser.add_argument('f', metavar = 'stop_front.png', type = str, help = 'Input File')
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser(description = 'Skin Detector')
+    # parser.add_argument('f', metavar = 'stop_front.png', type = str, help = 'Input File')
+    # args = parser.parse_args()
     # im = cv2.imread(args.f)
     # object_track()
     # skin_detection_live()
@@ -532,6 +534,9 @@ if __name__=='__main__':
     DatasetPrepare.bgInit(vd,bs)
     ret,frame = vd.read()
     while(ret):
-        points,frame = track_using_background(bs,frame)
+        points,frame,fr1 = track_using_background(bs,frame)
+        cv2.imshow('Hand',frame)
+        cv2.imshow('Hand_edge',fr1)
         ret,frame = vd.read()
         cv2.waitKey(30)
+        
