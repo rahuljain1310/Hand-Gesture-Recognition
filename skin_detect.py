@@ -10,7 +10,7 @@ import argparse
 # Cr >= (-4.5652*Cb)+234.5652 and
 # Cr <= (-1.15*Cb)+301.75 and
 # Cr <= (-2.2857*Cb)+432.85
-
+import DatasetPrepare
 
 import cv2
 import matplotlib.pyplot as plt
@@ -18,7 +18,7 @@ import os
 import PIL
 from numba import vectorize,float64,uint8,guvectorize
 
-
+# backSub = cv2.createBackgroundSubtractorMOG2()
 
 # @vectorize([uint8[:,:](uint8[:,:],uint8[:,:],uin8[:,:])])
 # def mask_pixel1(pixel):
@@ -262,10 +262,11 @@ def sliding_window(im,window,scale,scale_factor):
     return outputs
 
 def get_label(outputs):
+    # float scale_factor = 1.3
     for i in range(len(outputs)):
-        kernel = np.ones((5, 5), np.uint8)
-        outputs[i] = cv2.erode(outputs[i], kernel, iterations=1)
-
+        # kernel = np.ones((5, 5), np.uint8)
+        # outputs[i] = cv2.erode(outputs[i], kernel, iterations=1)
+        pass
 from numpy.lib.stride_tricks import as_strided
 
     # cv2.imwrite('hand.jpeg',img_dilation)
@@ -445,42 +446,92 @@ def object_track():
         k = cv2.waitKey(30) & 0xff
         if k == 27 : break
 
-def track_using_background():
-    kernel = np.ones((5, 5), np.uint8)
-        vkernel = np.ones((5,1),np.uint8)
-        # img_dilation = cv2.erode(mask, kernel, iterations=3)
-        img_dilation = cv2.dilate(mask, vkernel, iterations=1)
-        img_dilation = cv2.dilate(mask, kernel, iterations=1)
-        # cv2.imshow('dilated', img_dilation)
-        # cv2.imwrite('undillated.png',mask)
-        # cv2.imwrite('dillated.png',img_dilation)
-        cv2MajorVersion = cv2.__version__.split(".")[0]
-        # check for contours on thresh
-        if int(cv2MajorVersion) >= 4:
-            ctrs, hier = cv2.findContours(img_dilation.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        else:
-            im2, ctrs, hier = cv2.findContours(img_dilation.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        sorted_ctrs = sorted(ctrs, key=lambda ctr: cv2.boundingRect(ctr)[0])
-        for i, ctr in enumerate(sorted_ctrs):
-        # Get bounding box
-            x, y, w, h = cv2.boundingRect(ctr)
+def expand(p1,p2,shape,scale):
+    
+    d1 = p2[1]-p1[1]
+    d0 = p2[0] - p1[0]
+    
+    i1  = int(d1*scale) - d1
+    p1[1] -= i1//2
+    p2[1] += i1//2
+    i2 = int(d0*scale) - d0
+    p1[0] -= i2//2
+    p2[0] += i2//2
+    if (p1[0] < 0):
+        p1[0] = 0
+    if (p1[1] < 0):
+        p1[1] = 0
+    if (p2[0] >=shape[1]):
+        p2[0] = shape[1] - 1
+    if (p2[1] >= shape[0]):
+        p2[1] = shape[0] - 1
+    return p1,p2
+def resize(p1,p2):
+    d1 = p2[1]-p1[1]
+    d0 = p2[0] - p1[0]
+    size = max(d1,d0)
+    inc = abs(d1-d0)//2
+    rinc = abs(d1-d0) - inc
+    if (size == d1):
+        p2[0] += inc
+        p1[0] -= rinc
+    else:
+        p2[1] += inc
+        p2[1] -= rinc
+    return p1,p2
+def track_using_background(bs,frame):
+    fr1 = bs.apply(frame)
+    erode_kernel = np.ones((3, 3), np.uint8)
+    dilate_kernel = np.ones((5,5),np.uint8)
+    # img_dilation = cv2.erode(mask, kernel, iterations=3)
+    fr1 = cv2.erode(fr1, erode_kernel, iterations=1)
+    fr1 = cv2.dilate(fr1, dilate_kernel, iterations=3)
+    # cv2.imshow('dilated', img_dilation)
+    # cv2.imwrite('undillated.png',mask)
+    # cv2.imwrite('dillated.png',img_dilation)
+    cv2MajorVersion = cv2.__version__.split(".")[0]
+    # check for contours on thresh
+    if int(cv2MajorVersion) >= 4:
+        ctrs, hier = cv2.findContours(fr1.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    else:
+        im2, ctrs, hier = cv2.findContours(fr1.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    sorted_ctrs = sorted(ctrs, key=lambda ctr: cv2.boundingRect(ctr)[0])
+    points_list = []
+    for i, ctr in enumerate(sorted_ctrs):
+    # Get bounding box
+        x, y, w, h = cv2.boundingRect(ctr)
+        p1 = [x,y]
+        p2 = [x+w,y+h]
 
-            # Getting ROI
-            roi = im_masked[y:y + h, x:x + w]
+        # Getting ROI
+        roi = frame[y:y + h, x:x + w]
 
-            # show ROI
-            # cv2.imshow('segment no:'+str(i),roi)
-            if w > 50 and h > 50:
-                cv2.rectangle(im, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        cv2.imshow('Hand',im)
-        waitk = cv2.waitKey(30)==27
-        # 
-        ret,im = vd.read()
+        # show ROI
+        # cv2.imshow('segment no:'+str(i),roi)
+        if w > 100 and h > 100:
+            p1,p2 = resize(*expand(p1,p2,frame.shape,1.3))
+            points_list.append((p1,p2))
+            cv2.rectangle(frame, tuple(p1), tuple(p2), (0, 255, 0), 2)
+    return points_list,frame
+    # cv2.imshow('Hand',frame)
+    
+   
+    # 
+    
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description = 'Skin Detector')
     parser.add_argument('f', metavar = 'stop_front.png', type = str, help = 'Input File')
     args = parser.parse_args()
     # im = cv2.imread(args.f)
-    object_track()
+    # object_track()
     # skin_detection_live()
+    vd = cv2.VideoCapture(0)
+    # bs = cv2.createBackgroundSubtractorKNN()
+    bs = cv2.createBackgroundSubtractorMOG2()
+    DatasetPrepare.bgInit(vd,bs)
+    ret,frame = vd.read()
+    while(ret):
+        points,frame = track_using_background(bs,frame)
+        ret,frame = vd.read()
+        cv2.waitKey(30)
