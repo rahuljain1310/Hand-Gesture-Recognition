@@ -1,6 +1,11 @@
 import cv2
 import math
 from Loader import wait
+import sys
+
+if not sys.warnoptions:
+    import warnings
+    warnings.simplefilter("ignore")
 
 sqSize = 50
 
@@ -24,7 +29,7 @@ def Partpermit():
 def bgInit(vd,bs):
   wait(2)
   print("Initializing Background ...", end='\r', flush=True)
-  for _ in range(200):
+  for _ in range(frame):
     _, im = vd.read()
     im = cv2.resize(im,(50,50))
     fim = bs.apply(im)
@@ -32,6 +37,26 @@ def bgInit(vd,bs):
     cv2.waitKey(30)
   cv2.destroyWindow('Background Initialization')
   print("Background Initialized.                  ")
+
+def getRectangle(sqSize,w,h):
+  mw = (w-sqSize)//2
+  mh = (h-sqSize)//2
+  p1 = (mw, mh)
+  p2 = (mw+sqSize, mh+sqSize)
+  return p1,p2
+
+def getImageWithBox(vd, sqSize, p1, p2 ,ws, text):
+  ret,im = vd.read()
+  x = p1[0]
+  y = p1[1]
+  if ret:
+    img = im[y:y+sqSize,x:x+sqSize]
+    cv2.rectangle(im,p1,p2,(0,0,255), thickness=2)
+    cv2.imshow('Capture Video',cv2.putText(cv2.flip(im,1), text, (15, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5 , (255,255,255)))
+    cv2.waitKey(ws)
+    return ret, img
+  else:
+    return ret,im
 
 def RecordVideo(vname, totalFrame):
   vd = cv2.VideoCapture(0)
@@ -118,7 +143,7 @@ def getBackgroundSubsfromVideos(inputV, outputf, part, total=math.inf):
     fr = backSub.apply(fr)
   print("Images Collected from {0} in folder{1}".format(inputV,outputf))
 
-def RecordClassImages(outputf, totalFrame, totalParts):
+def RecordClassImagesWithBS(outputf, totalFrame, totalParts):
   vd = cv2.VideoCapture(0)
   bs = cv2.createBackgroundSubtractorKNN(history=4000)
 
@@ -137,5 +162,37 @@ def RecordClassImages(outputf, totalFrame, totalParts):
       cv2.imwrite('{0}/{1}_{2}.jpg'.format(outputf,part,i), fim)
     print("Part {0} Recorded.                 ".format(part))
   
+def RecordClassImages(outputf, framesPerPart, part):
+  print("Continue to Part {0} of {1}[Y/n]: ".format(part,outputf), end='', flush=True)
+  vd = cv2.VideoCapture(0)
+  _,im = vd.read()
+  h,w,_ = im.shape
+  boundSquare = 240
+  sec = 7
+  fs = 5
+  p1,p2 = getRectangle(boundSquare,w,h)
+  res = input()
+  if (not res == 'y') and (not res =='Y'):
+    return
+  print("Recording Part:{0} in 10 seconds..".format(part), end='\r', flush=True)
+  for i in range(sec*33):
+    getImageWithBox(vd,360,p1,p2,30,'Wait {0} seconds.'.format(int(sec-i/33)))
+  for i in range(framesPerPart):
+    print("Recording Frame {0}\t\t\t\t".format(i),end='\r',flush=True)
+    ret,im = getImageWithBox(vd,boundSquare,p1,p2,1000//fs,"Recording Frame {0}".format(i))
+    if ret:
+      im = cv2.resize(im,(50,50))
+      cv2.imwrite('{0}/{1}_{2}.jpg'.format(outputf,part,i), im)
+  print("Part {0} Recorded.\t\t".format(part))
+  vd.release()
+  cv2.destroyAllWindows()
+  
 if __name__ == "__main__":
-  RecordClassImages('Images_RecordBS/Background',1000,2)
+  part = input()
+  frame = 100
+  RecordClassImages('Images_Demo/Stop',frame,part+'_1')
+  RecordClassImages('Images_Demo/Next',frame//2,part+'_1')
+  RecordClassImages('Images_Demo/Previous',frame//2,part+'_1')
+  RecordClassImages('Images_Demo/Stop',frame,part+'_2')
+  RecordClassImages('Images_Demo/Next',frame//2,part+'_2')
+  RecordClassImages('Images_Demo/Previous',frame//2,part+'_2')

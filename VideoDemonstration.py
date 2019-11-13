@@ -11,18 +11,28 @@ import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import numpy as np
 
-### Initialization of Camera and Background Substraction
+### Initialization of Camera / Display Functions 
 ### ================================================================================================================================
 
 vd = cv2.VideoCapture(0)
-bs = cv2.createBackgroundSubtractorKNN(history=4000)
-print("Initializing Background...", end='\r', flush=True)
-bgInit(vd,bs)
 
 def displayFrame(frame, text):
   cv2.rectangle(frame, (10, 2), (100,20), (255,255,255), -1)
   cv2.putText(frame, text, (15, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5 , (0,0,0))
   cv2.imshow('Hand Recognition', frame)
+
+### Transformation Functions and Background Substraction 
+### ================================================================================================================================
+
+bs = cv2.createBackgroundSubtractorKNN(history=4000)
+print("Initializing Background...", end='\r', flush=True)
+bgInit(vd,bs)
+
+def transformImage(im):
+  x = cv2.resize(im,(50,50))
+  x = bs.apply(x)
+  cv2.imshow('BS',x)
+  return cv2.cvtColor(x,cv2.COLOR_GRAY2BGR)
 
 ### Fetching Neural Network
 ### ================================================================================================================================
@@ -33,28 +43,22 @@ net = Net()
 net.load_state_dict(torch.load(PATH))
 classes = ('Background', 'Next', 'Previous' , 'Stop')
 
-print("Neural Network Fetched.       ")
+print("Neural Network Fetched.\t\t\t")
 
-### Start Camera
+### Video Demonstraion
 ### ================================================================================================================================
+
 ret,waitk = True, False
 w = torchvision.transforms.ToTensor()
-print("Capturing Frame ...", end='\r', flush=True)
-while ret and not waitk :
-  ret, im = vd.read()
-  x = cv2.resize(im,(50,50))
-  x = bs.apply(x)
-  # x = cv2.cvtColor(x,cv2.COLOR_GRAY2BGR)
-  x = w(x).unsqueeze(0)
-  output = net(x)
-  _, predicted = torch.max(output, 1)
-  outClass = classes[predicted]
-  displayFrame(im,outClass)
-  waitk = cv2.waitKey(30)==27
-
-print("Record Finished.      ")
-
-
-
-
-
+print("Capturing Frame ...\t\t", end='\r', flush=True)
+try:
+  while ret and not waitk :
+    ret, im = vd.read()
+    tensorIm = w(transformImage(im)).unsqueeze(0)
+    output = net(tensorIm)
+    _, predicted = torch.max(output, 1)
+    outClass = classes[predicted]
+    displayFrame(im,outClass)
+    waitk = cv2.waitKey(30)==27
+except: pass
+finally: print("Record Finished.\t\t\t")
