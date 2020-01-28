@@ -2,10 +2,13 @@ import cv2
 import math
 from Loader import wait
 import sys
+import os
 
 # if not sys.warnoptions:
 #     import warnings
 #     warnings.simplefilter("ignore")
+
+sqSize = 50
 
 def showAndget(vd):
   ret,im = vd.read()
@@ -27,7 +30,7 @@ def Partpermit():
 def bgInit(vd,bs):
   wait(2)
   print("Initializing Background ...", end='\r', flush=True)
-  for _ in range(frame):
+  for _ in range(100):
     _, im = vd.read()
     im = cv2.resize(im,(50,50))
     fim = bs.apply(im)
@@ -166,7 +169,7 @@ def RecordClassImages(outputf, framesPerPart, part):
   h,w,_ = im.shape
   boundSquare = 480
   sec = 2
-  fs = 5
+  fs = 30
   p1,p2 = getRectangle(boundSquare,w,h)
   # res = input()
   # if (not res == 'y') and (not res =='Y'):
@@ -185,11 +188,22 @@ def RecordClassImages(outputf, framesPerPart, part):
   cv2.destroyAllWindows()
   
 if __name__ == "__main__":
-  part = input()
-  frame = 100
+  x = ['Images_TM/'+c for c in os.listdir('Images_TM')]  
+  for d in x:
+    y = os.listdir(d)
+    for img in y:
+      img_ = cv2.imread(d+'/'+img)
+      img_ = cv2.resize(img_,(50,50))
+      cv2.imwrite(d+'/'+img,img_)                                                                                                  
+
+  # part = input()
+  # frame = 100
   # RecordClassImages('Images_Demo/Stop',frame,part+'_1')
   # RecordClassImages('Images_Demo/Next',frame//2,part+'_1')
-  RecordClassImages('Images_Demo/Previous',frame//2,part+'_1')
-  RecordClassImages('Images_Demo/Stop',frame,part+'_2')
-  RecordClassImages('Images_Demo/Next',frame//2,part+'_2')
-  RecordClassImages('Images_Demo/Previous',frame//2,part+'_2')
+  # RecordClassImages('Images_Demo/Previous',frame//2,part+'_1')
+  # RecordClassImages('Images_Demo/Stop',frame,part+'_2')
+  # RecordClassImages('Images_Demo/Next',frame//2,part+'_2')
+  # RecordClassImages('Images_Demo/Previous',frame//2,part+'_2')
+  # RecordClassImages('Images_Demo_Train/Background',2000,part+'_1')
+  # RecordClassImages('Images_Demo_Test/Background',200,part+'_1')
+  # RecordClassImages('Images_Demo_CV/Background',400,part+'_1')

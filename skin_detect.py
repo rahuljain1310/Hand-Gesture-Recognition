@@ -163,12 +163,12 @@ def get_ROI(im):
     cv2.imshow('marked areas', image)
     cv2.waitKey(0)
 
-def skin_detection_live():
-    vd = cv2.VideoCapture(0)
-    ret = True
-    ret,im = vd.read()
-    # ret = False
-    while(ret):
+def skin_detection_live(im):
+    # vd = cv2.VideoCapture(0)
+    # ret = True
+    # ret,im = vd.read()
+    # # ret = False
+    # while(ret):
         w,h,_ = im.shape
         im = cv2.resize(im,(h//2,w//2))
         # def get_dillated():
@@ -497,21 +497,37 @@ def track_using_background(bs,frame):
         im2, ctrs, hier = cv2.findContours(fr1.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     sorted_ctrs = sorted(ctrs, key=lambda ctr: cv2.boundingRect(ctr)[0])
     points_list = []
+    w,h,_ = frame.shape
+    # im = cv2.resize(im,(h//2,w//2))
+    # def get_dillated():
+    mask,im_masked = detect_skin(frame)
+
+    # fileroot = args.f.rsplit('.',maxsplit=1)
+    # # print(fileroot)
+    # filesave = fileroot[0] + '_1.' + fileroot[1]
+
+    kernel = np.ones((5, 5), np.uint8)
+    vkernel = np.ones((5,1),np.uint8)
+    # img_dilation = cv2.erode(mask, kernel, iterations=3)
+    img_dilation = cv2.dilate(mask, vkernel, iterations=1)
+    img_dilation = cv2.dilate(mask, kernel, iterations=1)
+
     for i, ctr in enumerate(sorted_ctrs):
     # Get bounding box
         x, y, w, h = cv2.boundingRect(ctr)
         p1 = [x,y]
         p2 = [x+w,y+h]
 
+      
         # Getting ROI
         roi = frame[y:y + h, x:x + w]
-
+        skin_detection_live
         # show ROI
         # cv2.imshow('segment no:'+str(i),roi)
-        if w > 100 and h > 100:
+        if w > 100 and h > 100 and np.average(mask[y:y+h,x:x+w]) > 0.2*255:
             p1,p2 = resize(*expand(p1,p2,frame.shape,1.3))
             points_list.append((p1,p2))
-            cv2.rectangle(frame, tuple(p1), tuple(p2), (0, 255, 0), 2)
+            # cv2.rectangle(frame, tuple(p1), tuple(p2), (0, 255, 0), 2)
     return points_list,frame
     # cv2.imshow('Hand',frame)
     

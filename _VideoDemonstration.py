@@ -1,8 +1,8 @@
 import cv2
-from CNN_Architecture import Net, trainTransform,classes
+from _CNN_Architecture import Net, trainTransform,classes
 
-from Loader import loading
-from DatasetPrepare import bgInit
+from _Loader import loading
+from _DatasetPrepare import bgInit
 import skin_detect
 import torch
 import torchvision
@@ -64,12 +64,14 @@ print("Neural Network Fetched.\t\t\t")
 ret,waitk = True, False
 w = torchvision.transforms.ToTensor()
 print("Capturing Frame ...\t\t", end='\r', flush=True)
+
 bs = cv2.createBackgroundSubtractorMOG2()
-# bgInit(vd,bs)
-sm = torch.nn.Softmax()
+bgInit(vd,bs)
+
 while ret and not waitk :
   ret, im = vd.read()
   points,frame = skin_detect.track_using_background(bs,im)
+  print(1)
   outputs = []
   predictions = []
   outclasses = []
